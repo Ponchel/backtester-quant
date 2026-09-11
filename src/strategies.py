@@ -135,13 +135,32 @@ def ml_logistic(
     return signal
 
 
+def to_long_only(signal: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convertit un signal long/short en signal long-only : tout -1 devient 0.
+
+    Pourquoi c'est nécessaire pour une comparaison honnête : le buy-and-hold
+    est long à 100% du temps. Sur une décennie de marché haussier, une
+    stratégie autorisée à être short est structurellement pénalisée — la
+    comparer directement au buy-and-hold reviendrait à lui reprocher un
+    handicap qu'on lui a imposé. La version long-only teste une question
+    plus propre : la stratégie sait-elle au moins ÉVITER les mauvaises
+    périodes, en restant simplement hors du marché ?
+
+    Effet secondaire à noter : passer de -1 à 0 réduit aussi le turnover
+    (moins d'allers-retours de position), donc les coûts de transaction
+    baissent. Ça joue en faveur des stratégies actives — raison de plus
+    pour que cette comparaison soit la bonne à présenter.
+    """
+    return signal.clip(lower=0)
+
+
 if __name__ == "__main__":
     from engine import run_backtest
 
     returns = pd.read_csv("data/clean/returns.csv", index_col=0, parse_dates=True)
 
     strategies = {
-        "buy_and_hold": pd.DataFrame(1.0, index=returns.index, columns=returns.columns),
         "moving_average": moving_average_crossover(returns),
         "momentum": momentum(returns),
         "mean_reversion": mean_reversion(returns),
@@ -150,8 +169,14 @@ if __name__ == "__main__":
     print("Entraînement du modèle ML (régression logistique par actif)...")
     strategies["ml_logistic"] = ml_logistic(returns)
 
-    print("\n--- Comparaison des stratégies (capital final, départ = 1.0) ---")
+    buy_and_hold = pd.DataFrame(1.0, index=returns.index, columns=returns.columns)
+    bh_capital = run_backtest(returns, buy_and_hold, cost_bps=5.0)["equity_curve"].iloc[-1]
+
+    print("\n--- Capital final (départ = 1.0), sur 10 ans ---")
+    print(f"  {'buy_and_hold':16s} : {bh_capital:.3f}  (référence)")
+    print(f"\n  {'stratégie':16s}   {'long/short':>10s}  {'long-only':>10s}")
+
     for name, signal in strategies.items():
-        result = run_backtest(returns, signal, cost_bps=5.0)
-        final_capital = result["equity_curve"].iloc[-1]
-        print(f"  {name:16s} : {final_capital:.3f}")
+        ls = run_backtest(returns, signal, cost_bps=5.0)["equity_curve"].iloc[-1]
+        lo = run_backtest(returns, to_long_only(signal), cost_bps=5.0)["equity_curve"].iloc[-1]
+        print(f"  {name:16s} {ls:>10.3f}  {lo:>10.3f}")
