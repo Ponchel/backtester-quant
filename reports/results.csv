@@ -1,0 +1,6 @@
+,return %/yr,vol %/yr,sharpe,max DD %,final capital
+buy_and_hold,12.59,16.25,0.775,-18.9,1.426
+moving_average,0.34,9.86,0.034,-18.31,1.01
+momentum,2.66,9.63,0.276,-12.93,1.082
+mean_reversion,-2.87,6.76,-0.424,-11.92,0.917
+ml_logistic,7.22,14.58,0.495,-26.29,1.232

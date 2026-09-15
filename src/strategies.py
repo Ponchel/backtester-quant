@@ -96,6 +96,7 @@ def ml_logistic(
     lui-même.
     """
     signal = pd.DataFrame(0.0, index=returns.index, columns=returns.columns)
+    accuracies: dict[str, dict[str, float]] = {}
 
     for ticker in returns.columns:
         series = returns[ticker].dropna()
@@ -131,7 +132,9 @@ def ml_logistic(
         train_accuracy = model.score(train.drop(columns="target"), train["target"])
         test_accuracy = model.score(test.drop(columns="target"), test["target"])
         print(f"  {ticker} : accuracy train={train_accuracy:.3f}  test={test_accuracy:.3f}")
+        accuracies[ticker] = {"train": train_accuracy, "test": test_accuracy}
 
+    signal.attrs["accuracy"] = accuracies
     return signal
 
 
